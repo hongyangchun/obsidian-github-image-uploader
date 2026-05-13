@@ -83,7 +83,11 @@ export default class GitHubImageUploaderPlugin extends Plugin {
   settings!: GitHubImageUploaderSettings;
   replacementLogs: ReplacementLogEntry[] = [];
 
-  async onload() {
+  onload() {
+    this.initializePlugin();
+  }
+
+  private async initializePlugin() {
     await this.loadSettings();
     await this.loadReplacementLogs();
     this.addSettingTab(new GitHubImageUploaderSettingTab(this.app, this));
@@ -350,13 +354,32 @@ class GitHubImageUploaderSettingTab extends PluginSettingTab {
         );
 
       // Info box for Obsidian image syntax
-      const imageWidthInfo = containerEl.createDiv();
-      imageWidthInfo.style.cssText = 'background: var(--background-secondary); padding: 12px; border-radius: 6px; margin: 10px 0; font-size: 0.9em;';
-      imageWidthInfo.innerHTML = '<strong>Obsidian 图片语法：</strong><br/>' +
-        '• <code>![image|300](url)</code> - 指定宽度 300px<br/>' +
-        '• <code>![image|300x200](url)</code> - 指定宽度 300px 和高度 200px<br/>' +
-        '• <code>![image](url)</code> - 不指定尺寸，使用原始大小<br/>' +
-        '<br/><strong>建议：</strong>通常只需指定宽度，高度会按比例自动调整';
+      const imageWidthInfo = containerEl.createDiv({
+        cls: 'image-width-info',
+      });
+      imageWidthInfo.style.background = 'var(--background-secondary)';
+      imageWidthInfo.style.padding = '12px';
+      imageWidthInfo.style.borderRadius = '6px';
+      imageWidthInfo.style.margin = '10px 0';
+      imageWidthInfo.style.fontSize = '0.9em';
+      
+      imageWidthInfo.createEl('strong', { text: 'Obsidian 图片语法：' });
+      imageWidthInfo.createEl('br');
+      imageWidthInfo.createEl('div', { text: '• ' });
+      const code1 = imageWidthInfo.createEl('code', { text: '![image|300](url)' });
+      imageWidthInfo.appendText(' - 指定宽度 300px');
+      imageWidthInfo.createEl('br');
+      imageWidthInfo.appendText('• ');
+      const code2 = imageWidthInfo.createEl('code', { text: '![image|300x200](url)' });
+      imageWidthInfo.appendText(' - 指定宽度 300px 和高度 200px');
+      imageWidthInfo.createEl('br');
+      imageWidthInfo.appendText('• ');
+      const code3 = imageWidthInfo.createEl('code', { text: '![image](url)' });
+      imageWidthInfo.appendText(' - 不指定尺寸，使用原始大小');
+      imageWidthInfo.createEl('br');
+      imageWidthInfo.createEl('br');
+      imageWidthInfo.createEl('strong', { text: '建议：' });
+      imageWidthInfo.appendText('通常只需指定宽度，高度会按比例自动调整');
     }
 
     // ── Image Compression (always visible when enabled) ───────────────────
@@ -393,13 +416,32 @@ class GitHubImageUploaderSettingTab extends PluginSettingTab {
         );
 
       // Compression preset recommendations
-      const presetContainer = containerEl.createDiv();
-      presetContainer.style.cssText = 'background: var(--background-secondary); padding: 12px; border-radius: 6px; margin: 10px 0; font-size: 0.9em;';
-      presetContainer.innerHTML = '<strong>快速预设：</strong><br/>' +
-        '• <strong>高质量（0.90）</strong> - 文档、艺术作品，目标 800KB<br/>' +
-        '• <strong>平衡（0.85）</strong> - 日常笔记、博客，目标 500KB<br/>' +
-        '• <strong>紧凑（0.75）</strong> - 移动网络、大量图片，目标 300KB<br/>' +
-        '• <strong>极限（0.60）</strong> - 受限网络、快速分享，目标 150KB';
+      const presetContainer = containerEl.createDiv({
+        cls: 'compression-presets',
+      });
+      presetContainer.style.background = 'var(--background-secondary)';
+      presetContainer.style.padding = '12px';
+      presetContainer.style.borderRadius = '6px';
+      presetContainer.style.margin = '10px 0';
+      presetContainer.style.fontSize = '0.9em';
+      
+      presetContainer.createEl('strong', { text: '快速预设：' });
+      presetContainer.createEl('br');
+      presetContainer.appendText('• ');
+      presetContainer.createEl('strong', { text: '高质量（0.90）' });
+      presetContainer.appendText(' - 文档、艺术作品，目标 800KB');
+      presetContainer.createEl('br');
+      presetContainer.appendText('• ');
+      presetContainer.createEl('strong', { text: '平衡（0.85）' });
+      presetContainer.appendText(' - 日常笔记、博客，目标 500KB');
+      presetContainer.createEl('br');
+      presetContainer.appendText('• ');
+      presetContainer.createEl('strong', { text: '紧凑（0.75）' });
+      presetContainer.appendText(' - 移动网络、大量图片，目标 300KB');
+      presetContainer.createEl('br');
+      presetContainer.appendText('• ');
+      presetContainer.createEl('strong', { text: '极限（0.60）' });
+      presetContainer.appendText(' - 受限网络、快速分享，目标 150KB');
 
       new Setting(containerEl)
         .setName('压缩质量步长')
@@ -466,50 +508,83 @@ class GitHubImageUploaderSettingTab extends PluginSettingTab {
       );
 
     // Recent replacement logs (show last 10)
-    const recentLogsContainer = containerEl.createDiv();
-    recentLogsContainer.style.cssText = 'margin-top: 12px;';
+    const recentLogsContainer = containerEl.createDiv({
+      cls: 'recent-logs-container',
+    });
+    recentLogsContainer.style.marginTop = '12px';
 
     const recentLogsHeader = recentLogsContainer.createEl('div', {
       cls: 'recent-logs-header',
       text: '最近替换记录',
     });
-    recentLogsHeader.style.cssText = 'font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-muted);';
+    recentLogsHeader.style.fontSize = '13px';
+    recentLogsHeader.style.fontWeight = '600';
+    recentLogsHeader.style.marginBottom = '8px';
+    recentLogsHeader.style.color = 'var(--text-muted)';
 
-    const recentLogsList = recentLogsContainer.createEl('div', { cls: 'recent-logs-list' });
-    recentLogsList.style.cssText = 'background: var(--background-secondary); border-radius: 6px; padding: 8px; max-height: 300px; overflow-y: auto;';
+    const recentLogsList = recentLogsContainer.createDiv({ cls: 'recent-logs-list' });
+    recentLogsList.style.background = 'var(--background-secondary)';
+    recentLogsList.style.borderRadius = '6px';
+    recentLogsList.style.padding = '8px';
+    recentLogsList.style.maxHeight = '300px';
+    recentLogsList.style.overflowY = 'auto';
 
     const logs = this.plugin.replacementLogs.slice(0, 10);
 
     if (logs.length === 0) {
-      recentLogsList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 12px;">暂无替换记录</div>';
+      const emptyDiv = recentLogsList.createDiv({ cls: 'empty-logs' });
+      emptyDiv.style.color = 'var(--text-muted)';
+      emptyDiv.style.fontSize = '13px';
+      emptyDiv.style.textAlign = 'center';
+      emptyDiv.style.padding = '12px';
+      emptyDiv.appendText('暂无替换记录');
     } else {
       for (const log of logs) {
-        const logItem = recentLogsList.createEl('div', { cls: 'recent-log-item' });
-        logItem.style.cssText = 'padding: 8px 0; border-bottom: 1px solid var(--background-modifier-border);';
+        const logItem = recentLogsList.createDiv({ cls: 'recent-log-item' });
+        logItem.style.padding = '8px 0';
         logItem.style.borderBottom = '1px solid var(--background-modifier-border)';
 
-        const logHeader = logItem.createEl('div', { cls: 'recent-log-header' });
-        logHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;';
+        const logHeader = logItem.createDiv({ cls: 'recent-log-header' });
+        logHeader.style.display = 'flex';
+        logHeader.style.justifyContent = 'space-between';
+        logHeader.style.alignItems = 'center';
+        logHeader.style.marginBottom = '4px';
 
         const logStatus = logHeader.createEl('span', {
           cls: 'recent-log-status',
           text: log.success ? '✓ 成功' : '✗ 失败',
         });
-        logStatus.style.cssText = `font-size: 12px; color: ${log.success ? 'var(--text-success)' : 'var(--text-error)'};`;
+        logStatus.style.fontSize = '12px';
+        logStatus.style.color = log.success ? 'var(--text-success)' : 'var(--text-error)';
 
         const logTime = logHeader.createEl('span', {
           cls: 'recent-log-time',
           text: log.timestamp.toLocaleString('zh-CN'),
         });
-        logTime.style.cssText = 'font-size: 11px; color: var(--text-muted);';
+        logTime.style.fontSize = '11px';
+        logTime.style.color = 'var(--text-muted)';
 
-        const logPaths = logItem.createEl('div', { cls: 'recent-log-paths' });
-        logPaths.style.cssText = 'font-size: 12px; word-break: break-all;';
-        logPaths.innerHTML = `<span style="color: var(--text-muted);">${this.escapeHtml(log.localPath)}</span> <span style="color: var(--text-muted);">→</span> <span style="color: var(--interactive-accent);">${log.remoteUrl ? this.escapeHtml(log.remoteUrl.substring(log.remoteUrl.lastIndexOf('/') + 1)) : '-'}</span>`;
+        const logPaths = logItem.createDiv({ cls: 'recent-log-paths' });
+        logPaths.style.fontSize = '12px';
+        logPaths.style.wordBreak = 'break-all';
+        
+        const localPathSpan = logPaths.createEl('span');
+        localPathSpan.style.color = 'var(--text-muted)';
+        localPathSpan.textContent = this.escapeHtml(log.localPath);
+        
+        const arrowSpan = logPaths.createEl('span');
+        arrowSpan.style.color = 'var(--text-muted)';
+        arrowSpan.appendText(' → ');
+        
+        const remoteUrlSpan = logPaths.createEl('span');
+        remoteUrlSpan.style.color = 'var(--interactive-accent)';
+        remoteUrlSpan.textContent = log.remoteUrl ? this.escapeHtml(log.remoteUrl.substring(log.remoteUrl.lastIndexOf('/') + 1)) : '-';
 
         if (log.affectedNotes.length > 0) {
-          const logNotes = logItem.createEl('div', { cls: 'recent-log-notes' });
-          logNotes.style.cssText = 'font-size: 11px; color: var(--text-muted); margin-top: 4px;';
+          const logNotes = logItem.createDiv({ cls: 'recent-log-notes' });
+          logNotes.style.fontSize = '11px';
+          logNotes.style.color = 'var(--text-muted)';
+          logNotes.style.marginTop = '4px';
           logNotes.textContent = `影响 ${log.affectedNotes.length} 篇笔记: ${log.affectedNotes.map(n => n.basename).join(', ')}`;
         }
       }
