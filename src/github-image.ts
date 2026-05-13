@@ -1,4 +1,4 @@
-import { App, MarkdownView, Notice, Modal, ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
+import { App, MarkdownView, Notice, Modal, ItemView, WorkspaceLeaf, Menu, TFile, setIcon, requestUrl } from 'obsidian';
 import type GitHubImageUploaderPlugin from './main';
 
 /**
@@ -274,7 +274,7 @@ export class GitHubImageHosting {
         try {
           await this.app.vault.createFolder(attachmentFolder);
           await this.app.vault.createBinary(attachmentFolder + '/' + filename, arrayBuffer);
-        } catch (e) {
+        } catch {
           // Fallback to root
           await this.app.vault.createBinary(filename, arrayBuffer);
         }
@@ -310,7 +310,7 @@ export class GitHubImageHosting {
       // Ensure folder exists
       try {
         await this.app.vault.createFolder(attachmentFolder);
-      } catch (e) {
+      } catch {
         // Folder might already exist
       }
 
@@ -376,7 +376,7 @@ export class GitHubImageHosting {
 
       // Set timeout to prevent hanging on mobile (30 seconds)
       const timeoutPromise = new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error('上传超时，请检查网络连接')), 30000)
+        window.setTimeout(() => reject(new Error('上传超时，请检查网络连接')), 30000)
       );
 
       uploadUrl = await Promise.race([uploadPromise, timeoutPromise]);
@@ -386,7 +386,7 @@ export class GitHubImageHosting {
       progressModal.updateStatus('上传成功！', 'success');
 
       // Small delay to show success message
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => window.setTimeout(resolve, 800));
 
       // Insert markdown image link
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -403,7 +403,7 @@ export class GitHubImageHosting {
       progressModal.updateStatus('上传失败: ' + uploadError, 'error');
       
       // Show error for 2 seconds then close
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => window.setTimeout(resolve, 2000));
       progressModal.close();
     }
   }
@@ -437,7 +437,7 @@ export class GitHubImageHosting {
       });
 
       progressModal.updateStatus('上传成功！', 'success');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => window.setTimeout(resolve, 800));
 
       // Insert markdown image link
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -451,7 +451,7 @@ export class GitHubImageHosting {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       progressModal.updateStatus('压缩或上传失败: ' + msg, 'error');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => window.setTimeout(resolve, 2000));
       progressModal.close();
     }
   }
@@ -485,7 +485,7 @@ export class GitHubImageHosting {
       });
 
       progressModal.updateStatus('上传成功！', 'success');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => window.setTimeout(resolve, 800));
 
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
       if (view) {
@@ -498,7 +498,7 @@ export class GitHubImageHosting {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       progressModal.updateStatus('上传失败: ' + msg, 'error');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => window.setTimeout(resolve, 2000));
       progressModal.close();
     }
   }
@@ -517,7 +517,7 @@ export class GitHubImageHosting {
 
       try {
         await this.app.vault.createFolder(attachmentFolder);
-      } catch (e) {
+      } catch {
         // Folder might already exist
       }
 
@@ -666,7 +666,8 @@ export class GitHubImageHosting {
     const apiUrl = 'https://api.github.com/repos/' + options.owner + '/' + options.repo + '/contents/' + path;
 
     try {
-      const response = await fetch(apiUrl, {
+      const response = await requestUrl({
+        url: apiUrl,
         method: 'PUT',
         headers: {
           'Accept': 'application/vnd.github+json',
@@ -684,12 +685,12 @@ export class GitHubImageHosting {
         }),
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
+      if (response.status >= 400) {
+        const errData = JSON.parse(response.body).catch ? {} : JSON.parse(response.body);
         throw new Error('GitHub API ' + response.status + ': ' + JSON.stringify(errData));
       }
 
-      const data = await response.json();
+      const data = JSON.parse(response.body);
       // Construct raw GitHub URL directly
       const rawUrl = 'https://raw.githubusercontent.com/' + 
         options.owner + '/' + 
@@ -829,9 +830,15 @@ class ImageConfirmModal extends Modal {
       uploadSizeText = this.formatSize(this.imageFile.size) + '（压缩中...）';
     }
 
-    infoContainer.innerHTML = '<strong>文件名:</strong> ' + this.generatedFilename + '<br/>' +
-      '<strong>原始大小:</strong> ' + this.formatSize(this.imageFile.size) + '<br/>' +
-      '<strong>上传文件大小:</strong> <span class="upload-size-value">' + uploadSizeText + '</span>';
+    infoContainer.empty();
+    infoContainer.createEl('strong', { text: '文件名:' });
+    infoContainer.appendText(' ' + this.generatedFilename);
+    infoContainer.createEl('br');
+    infoContainer.createEl('strong', { text: '原始大小:' });
+    infoContainer.appendText(' ' + this.formatSize(this.imageFile.size));
+    infoContainer.createEl('br');
+    infoContainer.createEl('strong', { text: '上传文件大小:' });
+    const uploadSizeSpan = infoContainer.createEl('span', { cls: 'upload-size-value', text: uploadSizeText });
 
     // Only show compression section when compression is enabled and file exceeds threshold
     if (shouldShowCompress) {
@@ -862,7 +869,7 @@ class ImageConfirmModal extends Modal {
         } else {
           this.compressedBlob = null;
           this.compressing = false;
-          this.compressInfo.innerHTML = '';
+          this.compressInfo.empty();
           // Revert upload size to original with note
           const uploadSizeEl = this.contentEl.querySelector('.upload-size-value');
           if (uploadSizeEl) {
@@ -919,7 +926,10 @@ class ImageConfirmModal extends Modal {
     const originalSize = this.imageFile.size;
 
     this.compressing = true;
-    this.compressInfo.innerHTML = '<span style="color: var(--text-muted);">正在压缩...</span>';
+    this.compressInfo.empty();
+    const statusSpan = this.compressInfo.createEl('span');
+    statusSpan.style.color = 'var(--text-muted)';
+    statusSpan.textContent = '正在压缩...';
 
     // Query upload size element directly
     const uploadSizeEl = this.contentEl.querySelector('.upload-size-value');
@@ -935,12 +945,19 @@ class ImageConfirmModal extends Modal {
 
       // Update upload size element directly with color
       if (uploadSizeEl) {
-        uploadSizeEl.innerHTML = this.formatSize(compressedSize) + ' <span style="color: var(--text-success);">（减少 ' + savingsPercent + '%）</span>';
+        uploadSizeEl.empty();
+        uploadSizeEl.appendText(this.formatSize(compressedSize) + ' ');
+        const savingsSpan = uploadSizeEl.createEl('span');
+        savingsSpan.style.color = 'var(--text-success)';
+        savingsSpan.textContent = '（减少 ' + savingsPercent + '%）';
       }
       // Clear compressInfo after successful compression
-      this.compressInfo.innerHTML = '';
-    } catch (e) {
-      this.compressInfo.innerHTML = '<span style="color: var(--text-error);">压缩失败，请重试</span>';
+      this.compressInfo.empty();
+    } catch {
+      this.compressInfo.empty();
+      const errorSpan = this.compressInfo.createEl('span');
+      errorSpan.style.color = 'var(--text-error)';
+      errorSpan.textContent = '压缩失败，请重试';
       // Revert upload size element
       if (uploadSizeEl) {
         uploadSizeEl.textContent = this.formatSize(originalSize);
@@ -968,7 +985,7 @@ class ImageConfirmModal extends Modal {
         ctx.drawImage(img, 0, 0);
 
         // Set a timeout to reject if toBlob hangs
-        const timeoutId = setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
           reject(new Error('压缩超时'));
         }, 30000);
 
@@ -992,10 +1009,16 @@ class ImageConfirmModal extends Modal {
 
     if (this.compressEnabled) {
       if (!this.compressing && !this.compressedBlob) {
-        this.compressInfo.innerHTML = '<span style="color: var(--text-muted);">正在压缩...</span>';
+        this.compressInfo.empty();
+        const span = this.compressInfo.createEl('span');
+        span.style.color = 'var(--text-muted)';
+        span.textContent = '正在压缩...';
       }
     } else {
-      this.compressInfo.innerHTML = '<span style="color: var(--text-muted);">勾选上方选项启用压缩，可减小文件大小</span>';
+      this.compressInfo.empty();
+      const span = this.compressInfo.createEl('span');
+      span.style.color = 'var(--text-muted)';
+      span.textContent = '勾选上方选项启用压缩，可减小文件大小';
     }
   }
 
@@ -1091,7 +1114,7 @@ export class UploadProgressModal extends Modal {
 
   private animateProgress() {
     let progress = 0;
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       if (this.currentStatus === 'uploading') {
         progress += Math.random() * 30;
         if (progress > 90) {
@@ -1226,7 +1249,7 @@ export class GalleryView extends ItemView {
       }
 
       // Update stats in header after data loads
-      statsContainer.innerHTML = '';
+      statsContainer.empty();
       statsContainer.createEl('span', { text: `共 ${this.allImages.length} 张图片` });
 
       this.galleryGrid = container.createEl('div', { cls: 'gallery-grid' });
@@ -1236,7 +1259,8 @@ export class GalleryView extends ItemView {
       loadingEl.remove();
       const errorEl = container.createEl('div', { cls: 'gallery-error' });
       const msg = error instanceof Error ? error.message : String(error);
-      errorEl.innerHTML = `<p>加载失败: ${msg}</p>`;
+      const errorP = errorEl.createEl('p');
+      errorP.textContent = '加载失败: ' + msg;
     }
   }
 
@@ -1317,7 +1341,7 @@ export class GalleryView extends ItemView {
       }
 
       // Update stats in header after data loads
-      statsContainer.innerHTML = '';
+      statsContainer.empty();
       statsContainer.createEl('span', { text: `共 ${this.allImages.length} 张图片` });
 
       this.galleryGrid = container.createEl('div', { cls: 'gallery-grid' });
@@ -1326,7 +1350,8 @@ export class GalleryView extends ItemView {
       loadingEl.remove();
       const errorEl = container.createEl('div', { cls: 'gallery-error' });
       const msg = error instanceof Error ? error.message : String(error);
-      errorEl.innerHTML = `<p>刷新失败: ${msg}</p>`;
+      const errorP = errorEl.createEl('p');
+      errorP.textContent = '刷新失败: ' + msg;
     }
   }
 
@@ -1405,7 +1430,7 @@ export class GalleryView extends ItemView {
         button.textContent = '加载中...';
         button.disabled = true;
         // Timeout to allow UI to update
-        setTimeout(() => this.loadMoreImages(), 100);
+        window.setTimeout(() => this.loadMoreImages(), 100);
       });
     } else if (this.displayedImages.length > 0) {
       this.loadMoreBtn = this.galleryGrid.createEl('div', {
@@ -1475,7 +1500,7 @@ export class GalleryView extends ItemView {
     // Update stats
     const statsContainer = container.querySelector('.gallery-header-stats');
     if (statsContainer) {
-      statsContainer.innerHTML = '';
+      statsContainer.empty();
       statsContainer.createEl('span', { text: `共 ${allFiltered.length} 张图片` });
     }
 
@@ -1550,19 +1575,23 @@ export class GalleryView extends ItemView {
         'X-GitHub-Api-Version': '2022-11-28',
       };
 
-      const response = await fetch(apiUrl.toString(), {
+      const response = await requestUrl({
+        url: apiUrl.toString(),
         method: 'GET',
-        cache: 'no-store',
         headers,
       });
 
-      if (!response.ok) {
+      if (response.status >= 400) {
         if (response.status === 404) return [];
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(`GitHub API ${response.status}: ${JSON.stringify(errData)}`);
+        try {
+          const errData = JSON.parse(response.body);
+          throw new Error(`GitHub API ${response.status}: ${JSON.stringify(errData)}`);
+        } catch {
+          throw new Error(`GitHub API ${response.status}: ${response.body}`);
+        }
       }
 
-      const data = await response.json();
+      const data = JSON.parse(response.body);
 
       if (!Array.isArray(data)) {
         return [];
@@ -1758,7 +1787,7 @@ export class GalleryView extends ItemView {
     // Update stats
     const statsContainer = this.containerEl.querySelector('.gallery-header-stats');
     if (statsContainer) {
-      statsContainer.innerHTML = '';
+      statsContainer.empty();
       statsContainer.createEl('span', { text: `共 ${this.allImages.length} 张图片` });
     }
 
@@ -1822,7 +1851,7 @@ export class GalleryView extends ItemView {
       button.addEventListener('click', () => {
         button.textContent = '加载中...';
         button.disabled = true;
-        setTimeout(() => this.loadMoreImages(), 100);
+        window.setTimeout(() => this.loadMoreImages(), 100);
       });
     } else if (totalDisplayed > 0) {
       this.galleryGrid.createEl('div', {
@@ -1906,10 +1935,12 @@ class ImageDetailModal extends Modal {
     const detailsList = infoBody.createEl('div', { cls: 'image-detail-list' });
 
     const detailRow1 = detailsList.createEl('div', { cls: 'detail-row' });
-    detailRow1.innerHTML = `<span class="detail-label">大小:</span><span class="detail-value">${this.formatBytes(this.image.size)}</span>`;
+    detailRow1.createEl('span', { cls: 'detail-label', text: '大小:' });
+    detailRow1.createEl('span', { cls: 'detail-value', text: this.formatBytes(this.image.size) });
 
     const detailRow2 = detailsList.createEl('div', { cls: 'detail-row' });
-    detailRow2.innerHTML = `<span class="detail-label">上传:</span><span class="detail-value">${this.image.date.toLocaleString('zh-CN')}</span>`;
+    detailRow2.createEl('span', { cls: 'detail-label', text: '上传:' });
+    detailRow2.createEl('span', { cls: 'detail-value', text: this.image.date.toLocaleString('zh-CN') });
 
     this.renderReferenceNotesSection(infoBody);
 
@@ -1924,7 +1955,7 @@ class ImageDetailModal extends Modal {
       copyBtn.empty();
       setIcon(copyBtn, 'check');
       copyBtn.appendText(' 已复制');
-      setTimeout(() => {
+      window.setTimeout(() => {
         copyBtn.empty();
         setIcon(copyBtn, 'clipboard');
         copyBtn.appendText(' 链接');
@@ -1940,7 +1971,7 @@ class ImageDetailModal extends Modal {
       copyMarkdownBtn.empty();
       setIcon(copyMarkdownBtn, 'check');
       copyMarkdownBtn.appendText(' 已复制');
-      setTimeout(() => {
+      window.setTimeout(() => {
         copyMarkdownBtn.empty();
         setIcon(copyMarkdownBtn, 'file-text');
         copyMarkdownBtn.appendText(' Markdown');
@@ -1952,12 +1983,12 @@ class ImageDetailModal extends Modal {
     copyImageBtn.appendText(' 复制');
     copyImageBtn.addEventListener('click', async () => {
       try {
-        const response = await fetch(this.image.url, { cache: 'no-store' });
-        if (!response.ok) {
+        const response = await requestUrl({ url: this.image.url });
+        if (response.status >= 400) {
           throw new Error(`获取图片失败: ${response.status}`);
         }
 
-        const blob = await response.blob();
+        const blob = new Blob([response.body], { type: 'image/png' });
         if (!('clipboard' in navigator) || typeof ClipboardItem === 'undefined') {
           throw new Error('当前环境不支持复制图片到剪切板');
         }
@@ -1971,7 +2002,7 @@ class ImageDetailModal extends Modal {
         copyImageBtn.empty();
         setIcon(copyImageBtn, 'check');
         copyImageBtn.appendText(' 已复制');
-        setTimeout(() => {
+        window.setTimeout(() => {
           copyImageBtn.empty();
           setIcon(copyImageBtn, 'image');
           copyImageBtn.appendText(' 复制');
@@ -2154,9 +2185,9 @@ class ImageDetailModal extends Modal {
 
     try {
       // First get the file info to get its SHA
-      const getResponse = await fetch(apiUrl.toString(), {
+      const getResponse = await requestUrl({
+        url: apiUrl.toString(),
         method: 'GET',
-        cache: 'no-store',
         headers: {
           'Accept': 'application/vnd.github+json',
           'Authorization': `Bearer ${gitHubToken}`,
@@ -2164,17 +2195,18 @@ class ImageDetailModal extends Modal {
         },
       });
 
-      if (!getResponse.ok) {
+      if (getResponse.status >= 400) {
         throw new Error(`获取文件信息失败: ${getResponse.status}`);
       }
 
-      const fileData = await getResponse.json();
+      const fileData = JSON.parse(getResponse.body);
       const sha = fileData.sha;
 
       // Now delete the file
       const deleteUrl = new URL(apiUrl.toString());
       deleteUrl.searchParams.delete('ref');
-      const deleteResponse = await fetch(deleteUrl.toString(), {
+      const deleteResponse = await requestUrl({
+        url: deleteUrl.toString(),
         method: 'DELETE',
         headers: {
           'Accept': 'application/vnd.github+json',
@@ -2192,9 +2224,13 @@ class ImageDetailModal extends Modal {
         }),
       });
 
-      if (!deleteResponse.ok) {
-        const errData = await deleteResponse.json().catch(() => ({}));
-        throw new Error(`GitHub API ${deleteResponse.status}: ${JSON.stringify(errData)}`);
+      if (deleteResponse.status >= 400) {
+        try {
+          const errData = JSON.parse(deleteResponse.body);
+          throw new Error(`GitHub API ${deleteResponse.status}: ${JSON.stringify(errData)}`);
+        } catch {
+          throw new Error(`GitHub API ${deleteResponse.status}: ${deleteResponse.body}`);
+        }
       }
     } catch (error) {
       console.error('Delete error:', error);
