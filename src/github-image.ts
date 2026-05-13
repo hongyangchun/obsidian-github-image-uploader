@@ -686,11 +686,16 @@ export class GitHubImageHosting {
       });
 
       if (response.status >= 400) {
-        const errData = JSON.parse(response.body).catch ? {} : JSON.parse(response.body);
+        let errData = {};
+        try {
+          errData = await response.json;
+        } catch {
+          // Ignore parse errors
+        }
         throw new Error('GitHub API ' + response.status + ': ' + JSON.stringify(errData));
       }
 
-      const data = JSON.parse(response.body);
+      const data = await response.json;
       // Construct raw GitHub URL directly
       const rawUrl = 'https://raw.githubusercontent.com/' + 
         options.owner + '/' + 
@@ -794,22 +799,22 @@ class ImageConfirmModal extends Modal {
 
     // Mobile warning
     if (this.isMobile) {
-      const warning = contentEl.createEl('div', { cls: 'mobile-warning-header' });
+      const warning = contentEl.createDiv({ cls: 'mobile-warning-header' });
       const warningIconEl = warning.createSpan({ cls: 'mobile-warning-icon' });
       setIcon(warningIconEl, 'alert-triangle');
       warning.appendText(' 移动设备上传提示');
 
-      const warningContent = warning.createEl('div', { cls: 'mobile-warning-content' });
+      const warningContent = warning.createDiv({ cls: 'mobile-warning-content' });
       warningContent.textContent = '请稍候，上传中勿离开此页面。如遇卡顿，请关闭此弹窗后重试。';
     }
 
     // Image preview
-    const previewContainer = contentEl.createEl('div', { cls: 'image-preview-container' });
+    const previewContainer = contentEl.createDiv({ cls: 'image-preview-container' });
     const img = previewContainer.createEl('img');
     img.src = this.imageUrl;
 
     // File info with compression (centered)
-    const infoContainer = contentEl.createEl('div', { cls: 'image-info-container' });
+    const infoContainer = contentEl.createDiv({ cls: 'image-info-container' });
     infoContainer.style.cssText = 'text-align: left; margin: 0 auto; max-width: fit-content;';
     const fileSizeMB = this.imageFile.size / 1024 / 1024;
     const shouldShowCompress = this.enableCompression && fileSizeMB > this.compressionThreshold;
@@ -843,14 +848,14 @@ class ImageConfirmModal extends Modal {
     // Only show compression section when compression is enabled and file exceeds threshold
     if (shouldShowCompress) {
       // Compression section
-      const compressSection = contentEl.createEl('div', { cls: 'compress-section' });
+      const compressSection = contentEl.createDiv({ cls: 'compress-section' });
       compressSection.style.cssText = 'margin-top: -20px;';
 
       // Compression info - shown above the checkbox
-      this.compressInfo = compressSection.createEl('div', { cls: 'compress-info' });
+      this.compressInfo = compressSection.createDiv({ cls: 'compress-info' });
       this.compressInfo.style.cssText = 'font-size: 13px; text-align: center; margin-bottom: 6px;';
 
-      const compressRow = compressSection.createEl('div', { cls: 'compress-row' });
+      const compressRow = compressSection.createDiv({ cls: 'compress-row' });
       compressRow.style.cssText = 'display: flex; align-items: center; justify-content: center; gap: 12px;';
 
       this.compressToggle = compressRow.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
@@ -883,7 +888,7 @@ class ImageConfirmModal extends Modal {
     }
 
     // Button container
-    const buttonContainer = contentEl.createEl('div', { cls: 'button-container' });
+    const buttonContainer = contentEl.createDiv({ cls: 'button-container' });
 
     // Local save button
     const localBtn = buttonContainer.createEl('button', { cls: 'image-confirm-btn image-confirm-btn-local' });
@@ -1053,10 +1058,10 @@ export class UploadProgressModal extends Modal {
     contentEl.createEl('h2', { text: '上传图片' });
 
     // Status container
-    this.statusEl = contentEl.createEl('div', { cls: 'status-container' });
+    this.statusEl = contentEl.createDiv({ cls: 'status-container' });
 
     // Status icon and message
-    const iconEl = this.statusEl.createEl('div', { cls: 'upload-status-icon' });
+    const iconEl = this.statusEl.createDiv({ cls: 'upload-status-icon' });
     iconEl.style.color = 'var(--interactive-accent)';
     setIcon(iconEl, 'upload');
 
@@ -1064,10 +1069,10 @@ export class UploadProgressModal extends Modal {
     this.messageEl.textContent = '正在上传到 GitHub...';
 
     // Progress bar container
-    const progressContainer = contentEl.createEl('div', { cls: 'progress-container' });
+    const progressContainer = contentEl.createDiv({ cls: 'progress-container' });
 
     // Progress bar
-    this.progressBarEl = progressContainer.createEl('div');
+    this.progressBarEl = progressContainer.createDiv();
     this.progressBarEl.addClass('progress-bar');
 
     // Animate progress
@@ -1185,14 +1190,14 @@ export class GalleryView extends ItemView {
     container.empty();
     container.addClass('gallery-view-container');
 
-    const header = container.createEl('div', { cls: 'gallery-view-header' });
-    const titleContainer = header.createEl('div', { cls: 'gallery-header-content' });
+    const header = container.createDiv({ cls: 'gallery-view-header' });
+    const titleContainer = header.createDiv({ cls: 'gallery-header-content' });
 
     // Stats container (will be populated after data loads)
-    const statsContainer = titleContainer.createEl('div', { cls: 'gallery-header-stats' });
+    const statsContainer = titleContainer.createDiv({ cls: 'gallery-header-stats' });
 
     // Button container on the right
-    const buttonContainer = header.createEl('div', { cls: 'gallery-header-buttons' });
+    const buttonContainer = header.createDiv({ cls: 'gallery-header-buttons' });
 
     const { gitHubOwner, gitHubRepo, imagePaths, gitHubBranch } = this.plugin.settings;
     const githubLinkUrl = imagePaths.length > 0
@@ -1217,7 +1222,7 @@ export class GalleryView extends ItemView {
       window.open(githubLinkUrl, '_blank');
     });
 
-    const loadingEl = container.createEl('div', { cls: 'gallery-loading', text: '加载中...' });
+    const loadingEl = container.createDiv({ cls: 'gallery-loading', text: '加载中...' });
 
     try {
       const filter = this.plugin.settings.galleryFilter;
@@ -1241,7 +1246,7 @@ export class GalleryView extends ItemView {
       loadingEl.remove();
 
       if (this.allImages.length === 0) {
-        const emptyEl = container.createEl('div', { cls: 'gallery-empty' });
+        const emptyEl = container.createDiv({ cls: 'gallery-empty' });
         const emptyIconEl = emptyEl.createSpan({ cls: 'gallery-empty-icon' });
         setIcon(emptyIconEl, 'inbox');
         emptyEl.appendText(' 还没有图片');
@@ -1252,12 +1257,12 @@ export class GalleryView extends ItemView {
       statsContainer.empty();
       statsContainer.createEl('span', { text: `共 ${this.allImages.length} 张图片` });
 
-      this.galleryGrid = container.createEl('div', { cls: 'gallery-grid' });
+      this.galleryGrid = container.createDiv({ cls: 'gallery-grid' });
       this.loadMoreImages();
 
     } catch (error) {
       loadingEl.remove();
-      const errorEl = container.createEl('div', { cls: 'gallery-error' });
+      const errorEl = container.createDiv({ cls: 'gallery-error' });
       const msg = error instanceof Error ? error.message : String(error);
       const errorP = errorEl.createEl('p');
       errorP.textContent = '加载失败: ' + msg;
@@ -1275,14 +1280,14 @@ export class GalleryView extends ItemView {
     // Clear everything and rebuild header
     container.empty();
 
-    const header = container.createEl('div', { cls: 'gallery-view-header' });
-    const titleContainer = header.createEl('div', { cls: 'gallery-header-content' });
+    const header = container.createDiv({ cls: 'gallery-view-header' });
+    const titleContainer = header.createDiv({ cls: 'gallery-header-content' });
 
     // Stats container (will be populated after data loads)
-    const statsContainer = titleContainer.createEl('div', { cls: 'gallery-header-stats' });
+    const statsContainer = titleContainer.createDiv({ cls: 'gallery-header-stats' });
 
     // Button container on the right
-    const buttonContainer = header.createEl('div', { cls: 'gallery-header-buttons' });
+    const buttonContainer = header.createDiv({ cls: 'gallery-header-buttons' });
 
     const { gitHubOwner, gitHubRepo, imagePaths, gitHubBranch } = this.plugin.settings;
     const githubLinkUrl = imagePaths.length > 0
@@ -1307,7 +1312,7 @@ export class GalleryView extends ItemView {
       window.open(githubLinkUrl, '_blank');
     });
 
-    const loadingEl = container.createEl('div', { cls: 'gallery-loading', text: '刷新中...' });
+    const loadingEl = container.createDiv({ cls: 'gallery-loading', text: '刷新中...' });
 
     try {
       const filter = this.plugin.settings.galleryFilter;
@@ -1333,7 +1338,7 @@ export class GalleryView extends ItemView {
       loadingEl.remove();
 
       if (this.allImages.length === 0) {
-        const emptyEl = container.createEl('div', { cls: 'gallery-empty' });
+        const emptyEl = container.createDiv({ cls: 'gallery-empty' });
         const emptyIconEl = emptyEl.createSpan({ cls: 'gallery-empty-icon' });
         setIcon(emptyIconEl, 'inbox');
         emptyEl.appendText(' 还没有图片');
@@ -1344,11 +1349,11 @@ export class GalleryView extends ItemView {
       statsContainer.empty();
       statsContainer.createEl('span', { text: `共 ${this.allImages.length} 张图片` });
 
-      this.galleryGrid = container.createEl('div', { cls: 'gallery-grid' });
+      this.galleryGrid = container.createDiv({ cls: 'gallery-grid' });
       this.loadMoreImages();
     } catch (error) {
       loadingEl.remove();
-      const errorEl = container.createEl('div', { cls: 'gallery-error' });
+      const errorEl = container.createDiv({ cls: 'gallery-error' });
       const msg = error instanceof Error ? error.message : String(error);
       const errorP = errorEl.createEl('p');
       errorP.textContent = '刷新失败: ' + msg;
@@ -1376,7 +1381,7 @@ export class GalleryView extends ItemView {
         .onClick(async () => {
           const container = this.containerEl.children[1] as HTMLElement;
           container.empty();
-          const loadingEl = container.createEl('div', { cls: 'gallery-loading' });
+          const loadingEl = container.createDiv({ cls: 'gallery-loading' });
           loadingEl.textContent = '强制刷新中...';
           
           try {
@@ -1424,7 +1429,7 @@ export class GalleryView extends ItemView {
 
     // If there are more images, create a new "Load More" button
     if (endIndex < filteredImages.length) {
-      this.loadMoreBtn = this.galleryGrid.createEl('div', { cls: 'gallery-load-more-trigger' });
+      this.loadMoreBtn = this.galleryGrid.createDiv({ cls: 'gallery-load-more-trigger' });
       const button = this.loadMoreBtn.createEl('button', { text: `加载更多 (${endIndex}/${filteredImages.length})`});
       button.addEventListener('click', () => {
         button.textContent = '加载中...';
@@ -1433,7 +1438,7 @@ export class GalleryView extends ItemView {
         window.setTimeout(() => this.loadMoreImages(), 100);
       });
     } else if (this.displayedImages.length > 0) {
-      this.loadMoreBtn = this.galleryGrid.createEl('div', {
+      this.loadMoreBtn = this.galleryGrid.createDiv({
         cls: 'gallery-load-more-trigger gallery-load-more-end',
         text: '已加载所有图片',
       });
@@ -1443,12 +1448,12 @@ export class GalleryView extends ItemView {
   private createImageCard(image: UnifiedImage) {
       if (!this.galleryGrid) return;
 
-      const card = this.galleryGrid!.createEl('div', { cls: 'gallery-card' });
+      const card = this.galleryGrid!.createDiv({ cls: 'gallery-card' });
 
-      const imageContainer = card.createEl('div', { cls: 'gallery-image-container' });
+      const imageContainer = card.createDiv({ cls: 'gallery-image-container' });
 
       // Add type badge with icon
-      const badge = card.createEl('div', { cls: 'gallery-card-badge' });
+      const badge = card.createDiv({ cls: 'gallery-card-badge' });
       if (image.imageType === 'local') {
         badge.addClass('badge-local');
         setIcon(badge, 'folder');
@@ -1474,7 +1479,7 @@ export class GalleryView extends ItemView {
   private createGroupHeader(groupLabel: string) {
     if (!this.galleryGrid) return;
 
-    const header = this.galleryGrid.createEl('div', { cls: 'gallery-group-header' });
+    const header = this.galleryGrid.createDiv({ cls: 'gallery-group-header' });
     header.createEl('span', { cls: 'gallery-group-title', text: groupLabel });
     header.createEl('span', {
       cls: 'gallery-group-meta',
@@ -1505,7 +1510,7 @@ export class GalleryView extends ItemView {
     }
 
     if (allFiltered.length === 0) {
-      const emptyEl = container.createEl('div', { cls: 'gallery-empty' });
+      const emptyEl = container.createDiv({ cls: 'gallery-empty' });
       const emptyIconEl = emptyEl.createSpan({ cls: 'gallery-empty-icon' });
       setIcon(emptyIconEl, 'inbox');
       emptyEl.appendText(' 没有符合条件的图片');
@@ -1513,7 +1518,7 @@ export class GalleryView extends ItemView {
     }
 
     this.groupCounts = filteredCounts;
-    this.galleryGrid = container.createEl('div', { cls: 'gallery-grid' });
+    this.galleryGrid = container.createDiv({ cls: 'gallery-grid' });
     this.loadMoreImages();
   }
 
@@ -1584,14 +1589,14 @@ export class GalleryView extends ItemView {
       if (response.status >= 400) {
         if (response.status === 404) return [];
         try {
-          const errData = JSON.parse(response.body);
+          const errData = await response.json;
           throw new Error(`GitHub API ${response.status}: ${JSON.stringify(errData)}`);
         } catch {
-          throw new Error(`GitHub API ${response.status}: ${response.body}`);
+          throw new Error(`GitHub API ${response.status}`);
         }
       }
 
-      const data = JSON.parse(response.body);
+      const data = await response.json;
 
       if (!Array.isArray(data)) {
         return [];
@@ -1799,7 +1804,7 @@ export class GalleryView extends ItemView {
 
     // Show empty state if no images
     if (this.allImages.length === 0) {
-      const emptyEl = this.containerEl.createEl('div', { cls: 'gallery-empty' });
+      const emptyEl = this.containerEl.createDiv({ cls: 'gallery-empty' });
       const emptyIconEl = emptyEl.createSpan({ cls: 'gallery-empty-icon' });
       setIcon(emptyIconEl, 'inbox');
       emptyEl.appendText(' 还没有图片');
@@ -1844,7 +1849,7 @@ export class GalleryView extends ItemView {
     const totalDisplayed = this.displayedImages.length;
 
     if (totalDisplayed < filteredImages.length) {
-      const loadMoreBtn = this.galleryGrid.createEl('div', { cls: 'gallery-load-more-trigger' });
+      const loadMoreBtn = this.galleryGrid.createDiv({ cls: 'gallery-load-more-trigger' });
       const button = loadMoreBtn.createEl('button', {
         text: `加载更多 (${totalDisplayed}/${filteredImages.length})`
       });
@@ -1854,7 +1859,7 @@ export class GalleryView extends ItemView {
         window.setTimeout(() => this.loadMoreImages(), 100);
       });
     } else if (totalDisplayed > 0) {
-      this.galleryGrid.createEl('div', {
+      this.galleryGrid.createDiv({
         cls: 'gallery-load-more-trigger gallery-load-more-end',
         text: '已加载所有图片',
       });
@@ -1913,39 +1918,39 @@ class ImageDetailModal extends Modal {
     // Original custom close button removed. Rely on native Obsidian close button.
 
     // Image display (top section)
-    const imageContainer = contentEl.createEl('div', { cls: 'image-detail-container' });
+    const imageContainer = contentEl.createDiv({ cls: 'image-detail-container' });
     const img = imageContainer.createEl('img', { cls: 'image-detail-img' });
     img.src = this.image.url;
     img.alt = this.image.name;
 
     // Info panel (bottom section)
-    const infoPanel = contentEl.createEl('div', { cls: 'image-detail-info' });
-    const infoBody = infoPanel.createEl('div', { cls: 'image-detail-body' });
+    const infoPanel = contentEl.createDiv({ cls: 'image-detail-info' });
+    const infoBody = infoPanel.createDiv({ cls: 'image-detail-body' });
 
     // Filename
-    const titleRow = infoBody.createEl('div', { cls: 'image-detail-title-row' });
+    const titleRow = infoBody.createDiv({ cls: 'image-detail-title-row' });
     titleRow.createEl('h3', { text: this.image.name });
 
     // Image type badge
-    const typeBadge = infoBody.createEl('div', { cls: 'image-detail-type-badge' });
+    const typeBadge = infoBody.createDiv({ cls: 'image-detail-type-badge' });
     typeBadge.addClass(this.image.imageType === 'local' ? 'badge-local' : 'badge-remote');
     typeBadge.textContent = this.image.imageType === 'local' ? '本地图片' : 'GitHub图片';
 
     // Details
-    const detailsList = infoBody.createEl('div', { cls: 'image-detail-list' });
+    const detailsList = infoBody.createDiv({ cls: 'image-detail-list' });
 
-    const detailRow1 = detailsList.createEl('div', { cls: 'detail-row' });
+    const detailRow1 = detailsList.createDiv({ cls: 'detail-row' });
     detailRow1.createEl('span', { cls: 'detail-label', text: '大小:' });
     detailRow1.createEl('span', { cls: 'detail-value', text: this.formatBytes(this.image.size) });
 
-    const detailRow2 = detailsList.createEl('div', { cls: 'detail-row' });
+    const detailRow2 = detailsList.createDiv({ cls: 'detail-row' });
     detailRow2.createEl('span', { cls: 'detail-label', text: '上传:' });
     detailRow2.createEl('span', { cls: 'detail-value', text: this.image.date.toLocaleString('zh-CN') });
 
     this.renderReferenceNotesSection(infoBody);
 
     // Action buttons
-    const buttonGroup = infoPanel.createEl('div', { cls: 'image-detail-actions' });
+    const buttonGroup = infoPanel.createDiv({ cls: 'image-detail-actions' });
 
     const copyBtn = buttonGroup.createEl('button', { cls: 'action-btn image-detail-link-btn' });
     setIcon(copyBtn, 'clipboard');
@@ -1988,7 +1993,7 @@ class ImageDetailModal extends Modal {
           throw new Error(`获取图片失败: ${response.status}`);
         }
 
-        const blob = new Blob([response.body], { type: 'image/png' });
+        const blob = new Blob([await response.arrayBuffer], { type: 'image/png' });
         if (!('clipboard' in navigator) || typeof ClipboardItem === 'undefined') {
           throw new Error('当前环境不支持复制图片到剪切板');
         }
@@ -2044,17 +2049,17 @@ class ImageDetailModal extends Modal {
   }
 
   private renderReferenceNotesSection(container: HTMLElement) {
-    const section = container.createEl('div', { cls: 'image-reference-section' });
-    const header = section.createEl('div', { cls: 'image-reference-header' });
-    header.createEl('div', { cls: 'image-reference-title', text: '引用此图片的笔记' });
+    const section = container.createDiv({ cls: 'image-reference-section' });
+    const header = section.createDiv({ cls: 'image-reference-header' });
+    header.createDiv({ cls: 'image-reference-title', text: '引用此图片的笔记' });
 
-    const countEl = header.createEl('div', {
+    const countEl = header.createDiv({
       cls: 'image-reference-count',
       text: '搜索中...',
     });
 
-    const listEl = section.createEl('div', { cls: 'image-reference-list' });
-    listEl.createEl('div', {
+    const listEl = section.createDiv({ cls: 'image-reference-list' });
+    listEl.createDiv({
       cls: 'image-reference-loading',
       text: '正在查找引用此图片的笔记...',
     });
@@ -2069,7 +2074,7 @@ class ImageDetailModal extends Modal {
 
       if (references.length === 0) {
         countEl.textContent = '0 篇';
-        listEl.createEl('div', {
+        listEl.createDiv({
           cls: 'image-reference-empty',
           text: '还没有笔记引用这张图片',
         });
@@ -2079,7 +2084,7 @@ class ImageDetailModal extends Modal {
       countEl.textContent = `${references.length} 篇`;
 
       references.forEach((reference) => {
-        const item = listEl.createEl('div', { cls: 'image-reference-item' });
+        const item = listEl.createDiv({ cls: 'image-reference-item' });
 
         const itemRow = item.createEl('button', { cls: 'image-reference-item-button' });
         itemRow.type = 'button';
@@ -2091,7 +2096,7 @@ class ImageDetailModal extends Modal {
           text: reference.file.basename,
         });
 
-        item.createEl('div', {
+        item.createDiv({
           cls: 'image-reference-meta',
           text: `引用 ${reference.matchCount} 次`,
         });
@@ -2106,7 +2111,7 @@ class ImageDetailModal extends Modal {
       listEl.empty();
       countEl.textContent = '读取失败';
       const msg = error instanceof Error ? error.message : String(error);
-      listEl.createEl('div', {
+      listEl.createDiv({
         cls: 'image-reference-error',
         text: '引用笔记读取失败: ' + msg,
       });
@@ -2199,7 +2204,7 @@ class ImageDetailModal extends Modal {
         throw new Error(`获取文件信息失败: ${getResponse.status}`);
       }
 
-      const fileData = JSON.parse(getResponse.body);
+      const fileData = await getResponse.json;
       const sha = fileData.sha;
 
       // Now delete the file
@@ -2226,10 +2231,10 @@ class ImageDetailModal extends Modal {
 
       if (deleteResponse.status >= 400) {
         try {
-          const errData = JSON.parse(deleteResponse.body);
+          const errData = await deleteResponse.json;
           throw new Error(`GitHub API ${deleteResponse.status}: ${JSON.stringify(errData)}`);
         } catch {
-          throw new Error(`GitHub API ${deleteResponse.status}: ${deleteResponse.body}`);
+          throw new Error(`GitHub API ${deleteResponse.status}`);
         }
       }
     } catch (error) {
